@@ -46,7 +46,7 @@ graphify は 2 パスで動作します。まず、決定論的な AST パスが
 
 ## インストール
 
-**必要なもの:** Python 3.10+ および以下のいずれか： [Claude Code](https://claude.ai/code), [Codex](https://openai.com/codex), [OpenCode](https://opencode.ai), [OpenClaw](https://openclaw.ai), または [Factory Droid](https://factory.ai)
+**必要なもの:** Python 3.10+ および以下のいずれか： [Claude Code](https://claude.ai/code), [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli), [Codex](https://openai.com/codex), [OpenCode](https://opencode.ai), [OpenClaw](https://openclaw.ai), [Factory Droid](https://factory.ai), または [Trae](https://trae.ai)
 
 ```bash
 pip install graphifyy && graphify install
@@ -60,12 +60,15 @@ pip install graphifyy && graphify install
 |----------|----------------|
 | Claude Code (Linux/Mac) | `graphify install` |
 | Claude Code (Windows) | `graphify install`（自動検出）または `graphify install --platform windows` |
+| GitHub Copilot CLI | `graphify install --platform copilot` |
 | Codex | `graphify install --platform codex` |
 | OpenCode | `graphify install --platform opencode` |
 | OpenClaw | `graphify install --platform claw` |
 | Factory Droid | `graphify install --platform droid` |
+| Trae | `graphify install --platform trae` |
+| Trae CN | `graphify install --platform trae-cn` |
 
-Codex ユーザーは並列抽出のために `~/.codex/config.toml` の `[features]` の下に `multi_agent = true` も必要です。Factory Droid は並列サブエージェントディスパッチに `Task` ツールを使用します。OpenClaw は逐次抽出を使用します（並列エージェントサポートはこのプラットフォームではまだ初期段階です）。
+GitHub Copilot CLI はスキルを `~/.copilot/skills/graphify/SKILL.md` にインストールします。Codex ユーザーは並列抽出のために `~/.codex/config.toml` の `[features]` の下に `multi_agent = true` も必要です。Factory Droid は並列サブエージェントディスパッチに `Task` ツールを使用します。OpenClaw は逐次抽出を使用します（並列エージェントサポートはこのプラットフォームではまだ初期段階です）。Trae は並列サブエージェントディスパッチに Agent ツールを使用し、**PreToolUse フックをサポートしません**――常時有効のメカニズムは AGENTS.md です。
 
 次に、AI コーディングアシスタントを開いて入力します：
 
@@ -82,14 +85,23 @@ Codex ユーザーは並列抽出のために `~/.codex/config.toml` の `[featu
 | プラットフォーム | コマンド |
 |----------|---------|
 | Claude Code | `graphify claude install` |
+| GitHub Copilot CLI | `graphify copilot install` |
 | Codex | `graphify codex install` |
 | OpenCode | `graphify opencode install` |
 | OpenClaw | `graphify claw install` |
 | Factory Droid | `graphify droid install` |
+| Trae | `graphify trae install` |
+| Trae CN | `graphify trae-cn install` |
 
 **Claude Code** は 2 つのことを行います：Claude にアーキテクチャの質問に答える前に `graphify-out/GRAPH_REPORT.md` を読むように指示する `CLAUDE.md` セクションを書き込み、すべての Glob と Grep 呼び出しの前に発火する **PreToolUse フック**（`settings.json`）をインストールします。ナレッジグラフが存在する場合、Claude は次のメッセージを見ます：_"graphify: Knowledge graph exists. Read GRAPH_REPORT.md for god nodes and community structure before searching raw files."_ ――これにより Claude はすべてのファイルを grep するのではなく、グラフを介してナビゲートします。
 
-**Codex、OpenCode、OpenClaw、Factory Droid** は同じルールをプロジェクトルートの `AGENTS.md` に書き込みます。これらのプラットフォームは PreToolUse フックをサポートしていないため、AGENTS.md が常時有効のメカニズムとなります。
+**GitHub Copilot CLI** は同じルールを `AGENTS.md` に書き込みます。Copilot CLI はリポジトリルートの `AGENTS.md` を読みます。PreToolUse フックに相当するものはありません。
+
+**Codex** は `AGENTS.md` に書き込むだけでなく、すべての Bash ツール呼び出しの前に発火する **PreToolUse フック** を `.codex/hooks.json` にインストールします――Claude Code と同じ常時有効メカニズムです。
+
+**OpenCode** は `AGENTS.md` に書き込むだけでなく、bash ツール呼び出しの前に発火し、グラフが存在する場合はツール出力にグラフのリマインダーを注入する **`tool.execute.before` プラグイン**（`.opencode/plugins/graphify.js` + `opencode.json` への登録）もインストールします。
+
+**OpenClaw、Factory Droid、Trae** は同じルールをプロジェクトルートの `AGENTS.md` に書き込みます。これらのプラットフォームはツールフックをサポートしていないため、AGENTS.md が常時有効のメカニズムとなります。
 
 アンインストールは対応するアンインストールコマンドで行います（例：`graphify claude uninstall`）。
 
@@ -158,10 +170,16 @@ graphify hook status
 # 常時有効のアシスタント指示 - プラットフォーム固有
 graphify claude install            # CLAUDE.md + PreToolUse フック（Claude Code）
 graphify claude uninstall
+graphify copilot install           # AGENTS.md（GitHub Copilot CLI）
+graphify copilot uninstall
 graphify codex install             # AGENTS.md（Codex）
 graphify opencode install          # AGENTS.md（OpenCode）
 graphify claw install              # AGENTS.md（OpenClaw）
 graphify droid install             # AGENTS.md（Factory Droid）
+graphify trae install              # AGENTS.md（Trae）
+graphify trae uninstall
+graphify trae-cn install           # AGENTS.md（Trae CN）
+graphify trae-cn uninstall
 
 # ターミナルから直接グラフをクエリ（AI アシスタント不要）
 graphify query "アテンションとオプティマイザを結ぶものは？"
