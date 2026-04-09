@@ -33,7 +33,7 @@ graphify 分两轮执行。第一轮是确定性的 AST 提取，对代码文件
 
 ## 安装
 
-**要求：** Python 3.10+，并且使用以下平台之一：[Claude Code](https://claude.ai/code)、[Codex](https://openai.com/codex)、[OpenCode](https://opencode.ai)、[OpenClaw](https://openclaw.ai)、[Factory Droid](https://factory.ai) 或 [Trae](https://trae.ai)
+**要求：** Python 3.10+，并且使用以下平台之一：[Claude Code](https://claude.ai/code)、[GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli)、[Codex](https://openai.com/codex)、[OpenCode](https://opencode.ai)、[OpenClaw](https://openclaw.ai)、[Factory Droid](https://factory.ai) 或 [Trae](https://trae.ai)
 
 ```bash
 pip install graphifyy && graphify install
@@ -45,7 +45,9 @@ pip install graphifyy && graphify install
 
 | 平台 | 安装命令 |
 |------|----------|
-| Claude Code | `graphify install` |
+| Claude Code (Linux/Mac) | `graphify install` |
+| Claude Code (Windows) | `graphify install`（自动检测）或 `graphify install --platform windows` |
+| GitHub Copilot CLI | `graphify install --platform copilot` |
 | Codex | `graphify install --platform codex` |
 | OpenCode | `graphify install --platform opencode` |
 | OpenClaw | `graphify install --platform claw` |
@@ -53,7 +55,7 @@ pip install graphifyy && graphify install
 | Trae | `graphify install --platform trae` |
 | Trae CN | `graphify install --platform trae-cn` |
 
-Codex 用户还需要在 `~/.codex/config.toml` 的 `[features]` 下打开 `multi_agent = true`，这样才能并行提取。OpenClaw 目前的并行 agent 支持还比较早期，所以使用顺序提取。Trae 使用 Agent 工具进行并行子代理调度，**不支持** PreToolUse hook，因此 AGENTS.md 是其常驻机制。
+GitHub Copilot CLI 会把 skill 安装到 `~/.copilot/skills/graphify/SKILL.md`。Codex 用户还需要在 `~/.codex/config.toml` 的 `[features]` 下打开 `multi_agent = true`，这样才能并行提取。Factory Droid 使用 `Task` 工具进行并行子代理调度。OpenClaw 目前的并行 agent 支持还比较早期，所以使用顺序提取。Trae 使用 Agent 工具进行并行子代理调度，**不支持** PreToolUse hook，因此 AGENTS.md 是其常驻机制。
 
 然后打开你的 AI 编码助手，输入：
 
@@ -68,6 +70,7 @@ Codex 用户还需要在 `~/.codex/config.toml` 的 `[features]` 下打开 `mult
 | 平台 | 命令 |
 |------|------|
 | Claude Code | `graphify claude install` |
+| GitHub Copilot CLI | `graphify copilot install` |
 | Codex | `graphify codex install` |
 | OpenCode | `graphify opencode install` |
 | OpenClaw | `graphify claw install` |
@@ -81,7 +84,13 @@ Codex 用户还需要在 `~/.codex/config.toml` 的 `[features]` 下打开 `mult
 
 如果知识图谱存在，Claude 会先看到：_"graphify: Knowledge graph exists. Read graphify-out/GRAPH_REPORT.md for god nodes and community structure before searching raw files."_ —— 这样 Claude 会优先按图谱导航，而不是一上来就 grep 整个项目。
 
-**Codex、OpenCode、OpenClaw、Factory Droid、Trae** 会把同样的规则写进项目根目录的 `AGENTS.md`。这些平台没有 PreToolUse hook，所以 `AGENTS.md` 是它们的常驻机制。
+**GitHub Copilot CLI** 会把同样的规则写进 `AGENTS.md`，而 Copilot CLI 会读取仓库根目录中的 `AGENTS.md`。它没有与 PreToolUse hook 对应的机制。
+
+**Codex** 不只是写入 `AGENTS.md`，还会在 `.codex/hooks.json` 中安装一个 **PreToolUse hook**，它会在每次 Bash 工具调用前触发 —— 和 Claude Code 使用的是同一套常驻机制。
+
+**OpenCode** 不只是写入 `AGENTS.md`，还会安装一个 **`tool.execute.before` 插件**（`.opencode/plugins/graphify.js` 并注册到 `opencode.json`），它会在 bash 工具调用前触发，并在图谱存在时把图谱提醒注入到工具输出中。
+
+**OpenClaw、Factory Droid、Trae** 会把同样的规则写进项目根目录的 `AGENTS.md`。这些平台没有工具 hook，所以 `AGENTS.md` 就是它们的常驻机制。
 
 卸载时使用对应平台的 uninstall 命令即可（例如 `graphify claude uninstall`）。
 
@@ -149,6 +158,8 @@ graphify hook status
 # 常驻助手规则 - 按平台区分
 graphify claude install            # CLAUDE.md + PreToolUse hook（Claude Code）
 graphify claude uninstall
+graphify copilot install           # AGENTS.md（GitHub Copilot CLI）
+graphify copilot uninstall
 graphify codex install             # AGENTS.md（Codex）
 graphify opencode install          # AGENTS.md（OpenCode）
 graphify claw install              # AGENTS.md（OpenClaw）
